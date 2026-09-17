@@ -311,6 +311,8 @@ public class ActionEngine
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
     private const byte VK_RETURN = 0x0D;
+    private const byte VK_CONTROL = 0x11;
+    private const byte VK_W = 0x57;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
     public void SendEnterKey(IntPtr targetHwnd = default)
@@ -326,6 +328,31 @@ public class ActionEngine
         keybd_event(VK_RETURN, 0, 0, UIntPtr.Zero);
         Thread.Sleep(40);
         keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+        if (priorForeground != IntPtr.Zero && priorForeground != targetHwnd)
+        {
+            Thread.Sleep(30);
+            WindowHelper.RestoreForeground(priorForeground);
+        }
+    }
+
+    public void SendCtrlW(IntPtr targetHwnd = default)
+    {
+        IntPtr priorForeground = IntPtr.Zero;
+        if (targetHwnd != IntPtr.Zero)
+        {
+            priorForeground = WindowHelper.GetForegroundWindow();
+            WindowHelper.SetForegroundWindow(targetHwnd);
+            Thread.Sleep(30);
+        }
+
+        keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
+        Thread.Sleep(25);
+        keybd_event(VK_W, 0, 0, UIntPtr.Zero);
+        Thread.Sleep(40);
+        keybd_event(VK_W, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        Thread.Sleep(25);
+        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
 
         if (priorForeground != IntPtr.Zero && priorForeground != targetHwnd)
         {

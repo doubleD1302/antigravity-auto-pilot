@@ -139,6 +139,13 @@ public partial class MainWindow : Window
             }
         });
 
+        _scanner.PlanTabClosed += (tabName) => Dispatcher.Invoke(() =>
+        {
+            _logService.LogSuccess($"[TỰ ĐỘNG ĐÓNG TAB] Đã đóng tab '{tabName}' sau khi Proceed (không xóa file).");
+            TxtLatestEvent.Text = $"Đã đóng tab: {tabName}";
+            ScrollLogToEnd();
+        });
+
         _scanner.DiagnosticLogged += (msg) => Dispatcher.Invoke(() =>
         {
             _logService.LogInfo(msg);
@@ -236,6 +243,8 @@ public partial class MainWindow : Window
         ChkConfirm.IsChecked = _settings.EnableConfirm;
         ChkProceed.IsChecked = _settings.EnableProceed;
         ChkAutoAnswer.IsChecked = _settings.EnableAutoAnswerQuestion;
+        ChkAutoCloseProceededPlans.IsChecked = _settings.AutoCloseProceededPlans;
+        ChkAutoCloseProceededPlansSettings.IsChecked = _settings.AutoCloseProceededPlans;
 
         // Operating Mode
         switch (_settings.Mode)
@@ -347,17 +356,24 @@ public partial class MainWindow : Window
         else if (sender == ChkPlanSoundNotificationSettings && ChkPlanSoundNotification != null && ChkPlanSoundNotificationSettings != null)
             ChkPlanSoundNotification.IsChecked = ChkPlanSoundNotificationSettings.IsChecked;
 
+        if (sender == ChkAutoCloseProceededPlans && ChkAutoCloseProceededPlansSettings != null && ChkAutoCloseProceededPlans != null)
+            ChkAutoCloseProceededPlansSettings.IsChecked = ChkAutoCloseProceededPlans.IsChecked;
+        else if (sender == ChkAutoCloseProceededPlansSettings && ChkAutoCloseProceededPlans != null && ChkAutoCloseProceededPlansSettings != null)
+            ChkAutoCloseProceededPlans.IsChecked = ChkAutoCloseProceededPlansSettings.IsChecked;
+
+        _settings.AutoCloseProceededPlans = ChkAutoCloseProceededPlans?.IsChecked == true;
+
         _settings.EnableSoundNotification = ChkSoundNotification?.IsChecked == true;
-        _settings.SoundFilePath = TxtSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtSoundFilePath.Text) ? TxtSoundFilePath.Text.Trim() : "done.mp3";
+        _settings.SoundFilePath = TxtSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtSoundFilePath.Text) ? TxtSoundFilePath.Text.Trim() : "Sounds/done.mp3";
 
         _settings.EnableAcceptSoundNotification = ChkAcceptSoundNotification?.IsChecked == true;
-        _settings.AcceptSoundFilePath = TxtAcceptSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtAcceptSoundFilePath.Text) ? TxtAcceptSoundFilePath.Text.Trim() : "accept_all.mp3";
+        _settings.AcceptSoundFilePath = TxtAcceptSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtAcceptSoundFilePath.Text) ? TxtAcceptSoundFilePath.Text.Trim() : "Sounds/accept_all.mp3";
 
         _settings.EnableSubmitSoundNotification = ChkSubmitSoundNotification?.IsChecked == true;
-        _settings.SubmitSoundFilePath = TxtSubmitSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtSubmitSoundFilePath.Text) ? TxtSubmitSoundFilePath.Text.Trim() : "submit.mp3";
+        _settings.SubmitSoundFilePath = TxtSubmitSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtSubmitSoundFilePath.Text) ? TxtSubmitSoundFilePath.Text.Trim() : "Sounds/submit.mp3";
 
         _settings.EnablePlanSoundNotification = ChkPlanSoundNotification?.IsChecked == true;
-        _settings.PlanSoundFilePath = TxtPlanSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtPlanSoundFilePath.Text) ? TxtPlanSoundFilePath.Text.Trim() : "plan.mp3";
+        _settings.PlanSoundFilePath = TxtPlanSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtPlanSoundFilePath.Text) ? TxtPlanSoundFilePath.Text.Trim() : "Sounds/plan.mp3";
 
         _settings.SoundVolumePercent = SliderVolume != null ? (int)SliderVolume.Value : 100;
 

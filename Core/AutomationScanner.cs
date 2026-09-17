@@ -33,6 +33,7 @@ public class AutomationScanner : IDisposable
     public event Action<AutomationAction>? SubmitApproved;
     public event Action<AutomationAction>? AcceptApproved;
     public event Action<string>? PlanDetected;
+    public event Action<string>? PlanTabClosed;
     public event Action<string>? DiagnosticLogged;
 
     private bool _hasActiveGenerationObserved = false;
@@ -41,6 +42,8 @@ public class AutomationScanner : IDisposable
     private DateTime _lastActionExecutedTime = DateTime.MinValue;
     private DateTime _lastCompletionAlertTime = DateTime.MinValue;
     private DateTime _lastPlanAlertTime = DateTime.MinValue;
+    private bool _hasPendingPlan = false;
+    private DateTime _planDetectedTime = DateTime.MinValue;
     private readonly HashSet<string> _staleActionIds = new();
     private readonly HashSet<string> _detectedPlanIds = new();
     private bool _staleSnapshotTaken = false;
@@ -86,6 +89,8 @@ public class AutomationScanner : IDisposable
             _stopButtonPreviouslyPresent = false;
             _stopDisappearedTime = null;
             _lastActionExecutedTime = DateTime.MinValue;
+            _hasPendingPlan = false;
+            _planDetectedTime = DateTime.MinValue;
 
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
@@ -142,6 +147,8 @@ public class AutomationScanner : IDisposable
             _stopButtonPreviouslyPresent = false;
             _stopDisappearedTime = null;
             _lastActionExecutedTime = DateTime.MinValue;
+            _hasPendingPlan = false;
+            _planDetectedTime = DateTime.MinValue;
         }
     }
 
@@ -184,6 +191,7 @@ public class AutomationScanner : IDisposable
                 }
 
                 bool stopButtonFoundInCurrentScan = false;
+                bool proceedButtonFoundInCurrentScan = false;
                 bool clickedInThisPass = false;
                 bool hasPendingInteractiveActions = false;
 
@@ -428,6 +436,10 @@ public class AutomationScanner : IDisposable
                                 rawName.Contains("Implementation Plan", StringComparison.OrdinalIgnoreCase) ||
                                 rawName.StartsWith("Proceed", StringComparison.OrdinalIgnoreCase))
                             {
+                                proceedButtonFoundInCurrentScan = true;
+                                _hasPendingPlan = true;
+                                _planDetectedTime = DateTime.UtcNow;
+
                                 string planKey = $"plan_{candidateId}";
                                 if (!_detectedPlanIds.Contains(planKey))
                                 {
@@ -479,10 +491,15 @@ public class AutomationScanner : IDisposable
                                     AcceptApproved?.Invoke(action);
                                 }
 
-                                // If action is Proceed, consume all other Proceed buttons on screen
+                                // If action is Proceed, consume all other Proceed buttons on screen and close plan tab
                                 if (action.Kind == ActionKind.Proceed)
                                 {
                                     ConsumeAllProceedButtons(candidateList);
+                                    _hasPendingPlan = false;
+                                    if (currentSettings.AutoCloseProceededPlans)
+                                    {
+                                        ScheduleCloseProceededPlanTabs(window, windowHwnd, 1200);
+                                    }
                                 }
 
                                 clickedInThisPass = true;
@@ -514,6 +531,16 @@ public class AutomationScanner : IDisposable
                     }
                 }
             }
+
+                // 4.5 Auto-close Proceeded Plans Check (if user clicked Proceed manually or Proceed disappeared during generation)
+                if (_hasPendingPlan && !proceedButtonFoundInCurrentScan && currentSettings.AutoCloseProceededPlans)
+                {
+                    if (_hasActiveGenerationObserved || stopButtonFoundInCurrentScan || (DateTime.UtcNow - _planDetectedTime).TotalSeconds >= 2.5)
+                    {
+                        _hasPendingPlan = false;
+                        ScheduleCloseProceededPlanTabs(null, IntPtr.Zero, 800);
+                    }
+                }
 
                 // 5. Completion State Transition Check
                 if (stopButtonFoundInCurrentScan)
@@ -946,6 +973,187 @@ public class AutomationScanner : IDisposable
             catch { }
         }
     }
+
+    #region Auto-close Proceeded Plans
+
+    private void ScheduleCloseProceededPlanTabs(AutomationElement? specificWindow, IntPtr specificHwnd, int delayMs = 1200)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(delayMs);
+                if (specificWindow != null && specificHwnd != IntPtr.Zero)
+                {
+                    CloseProceededPlanTabs(specificWindow, specificHwnd);
+                }
+                else
+                {
+                    CloseAllProceededPlanTabs();
+                }
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Lỗi trong tiến trình đóng tab: {ex.Message}");
+            }
+        });
+    }
+
+    public void CloseAllProceededPlanTabs()
+    {
+        var windows = _detector.GetAntigravityWindows();
+        foreach (var win in windows)
+        {
+            IntPtr hwnd = IntPtr.Zero;
+            try { hwnd = (IntPtr)win.Current.NativeWindowHandle; } catch { }
+            CloseProceededPlanTabs(win, hwnd);
+        }
+    }
+
+    public int CloseProceededPlanTabs(AutomationElement window, IntPtr windowHwnd)
+    {
+        int closedCount = 0;
+        try
+        {
+            var btnCond = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button);
+
+            // 1. Direct close buttons with implementation_plan in the window
+            try
+            {
+                var allButtons = window.FindAll(TreeScope.Descendants, btnCond);
+                if (allButtons != null)
+                {
+                    foreach (AutomationElement btn in allButtons)
+                    {
+                        try
+                        {
+                            string btnName = btn.Current.Name ?? string.Empty;
+                            string btnId = btn.Current.AutomationId ?? string.Empty;
+
+                            bool isPlanCloseBtn = (btnName.IndexOf("implementation_plan", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                   btnId.IndexOf("implementation_plan", StringComparison.OrdinalIgnoreCase) >= 0) &&
+                                                  (btnName.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                   btnName.IndexOf("đóng", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                   btnId.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                            if (isPlanCloseBtn)
+                            {
+                                if (btn.TryGetCurrentPattern(InvokePattern.Pattern, out object? invObj) && invObj is InvokePattern inv)
+                                {
+                                    inv.Invoke();
+                                    closedCount++;
+                                    DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Đã đóng tab kế hoạch qua nút '{btnName}'.");
+                                    PlanTabClosed?.Invoke(btnName);
+                                    Thread.Sleep(100);
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            // 2. Scan TabItem elements
+            var tabCond = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem);
+            AutomationElementCollection? tabs = null;
+            try
+            {
+                tabs = window.FindAll(TreeScope.Descendants, tabCond);
+            }
+            catch { }
+
+            if (tabs != null && tabs.Count > 0)
+            {
+                foreach (AutomationElement tab in tabs)
+                {
+                    try
+                    {
+                        string tabName = tab.Current.Name ?? string.Empty;
+                        string tabId = tab.Current.AutomationId ?? string.Empty;
+
+                        bool isPlanTab = tabName.IndexOf("implementation_plan", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                         tabId.IndexOf("implementation_plan", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        if (!isPlanTab) continue;
+
+                        bool closedViaChildBtn = false;
+                        try
+                        {
+                            var tabChildButtons = tab.FindAll(TreeScope.Descendants, btnCond);
+                            if (tabChildButtons != null)
+                            {
+                                foreach (AutomationElement cb in tabChildButtons)
+                                {
+                                    try
+                                    {
+                                        string cbName = cb.Current.Name ?? string.Empty;
+                                        string cbId = cb.Current.AutomationId ?? string.Empty;
+
+                                        if (cbName.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            cbName.IndexOf("đóng", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            cbId.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                            tabChildButtons.Count == 1)
+                                        {
+                                            if (cb.TryGetCurrentPattern(InvokePattern.Pattern, out object? invObj) && invObj is InvokePattern inv)
+                                            {
+                                                inv.Invoke();
+                                                closedViaChildBtn = true;
+                                                closedCount++;
+                                                DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Đã đóng tab '{tabName}' qua nút đóng con.");
+                                                PlanTabClosed?.Invoke(tabName);
+                                                Thread.Sleep(100);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        if (!closedViaChildBtn)
+                        {
+                            // Select the tab then send Ctrl+W
+                            try
+                            {
+                                if (tab.TryGetCurrentPattern(SelectionItemPattern.Pattern, out object? selObj) && selObj is SelectionItemPattern sel)
+                                {
+                                    sel.Select();
+                                    Thread.Sleep(120);
+                                }
+                                else
+                                {
+                                    _actionEngine.TryPhysicalClick(tab);
+                                    Thread.Sleep(120);
+                                }
+
+                                _actionEngine.SendCtrlW(windowHwnd);
+                                closedCount++;
+                                DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Đã đóng tab '{tabName}' bằng phím tắt Ctrl+W.");
+                                PlanTabClosed?.Invoke(tabName);
+                                Thread.Sleep(100);
+                            }
+                            catch (Exception ex)
+                            {
+                                DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Lỗi khi gửi Ctrl+W đóng tab: {ex.Message}");
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogged?.Invoke($"[AUTO_CLOSE_PLAN] Không thể quét đóng tab: {ex.Message}");
+        }
+
+        return closedCount;
+    }
+
+    #endregion
 
     #endregion
 

@@ -35,20 +35,23 @@ public class AppSettings
 
     // Sound Notification on Task Completion (done.mp3)
     public bool EnableSoundNotification { get; set; } = true;
-    public string SoundFilePath { get; set; } = "done.mp3";
+    public string SoundFilePath { get; set; } = "Sounds/done.mp3";
     public int SoundVolumePercent { get; set; } = 100;
 
     // Sound Notification on Submit Approval (submit.mp3)
     public bool EnableSubmitSoundNotification { get; set; } = true;
-    public string SubmitSoundFilePath { get; set; } = "submit.mp3";
+    public string SubmitSoundFilePath { get; set; } = "Sounds/submit.mp3";
 
     // Sound Notification on Accept/Accept All (accept_all.mp3)
     public bool EnableAcceptSoundNotification { get; set; } = true;
-    public string AcceptSoundFilePath { get; set; } = "accept_all.mp3";
+    public string AcceptSoundFilePath { get; set; } = "Sounds/accept_all.mp3";
 
     // Sound Notification on Implementation Plan Detection (plan.mp3)
     public bool EnablePlanSoundNotification { get; set; } = true;
-    public string PlanSoundFilePath { get; set; } = "plan.mp3";
+    public string PlanSoundFilePath { get; set; } = "Sounds/plan.mp3";
+
+    // Auto-close editor tab of proceeded implementation plans (without deleting file)
+    public bool AutoCloseProceededPlans { get; set; } = true;
 
     // Custom Lists
     public List<string> CustomWhitelist { get; set; } = new();

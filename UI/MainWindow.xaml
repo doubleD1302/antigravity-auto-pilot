@@ -283,6 +283,7 @@
                                         <CheckBox x:Name="ChkConfirm" Content="Confirm (Xác nhận)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
                                         <CheckBox x:Name="ChkProceed" Content="Proceed (Kế hoạch Plan)" ToolTip="Tự động bấm Proceed trên kế hoạch implementation plan (chỉ bấm 1 lần duy nhất)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
                                         <CheckBox x:Name="ChkAutoAnswer" Content="Tự Trả Lời (Option 1)" ToolTip="Tự động chọn Option 1 (Yes/Allow) trên form câu hỏi modal và bấm Submit" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkAutoCloseProceededPlans" Content="Tự đóng tab Plan sau Proceed" ToolTip="Tự động đóng tab editor implementation_plan.md (không xóa file) sau khi kế hoạch được bấm Proceed" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
                                     </UniformGrid>
 
                                     <CheckBox x:Name="ChkPreventFocusStealing" Content="🛡️ Chống giật màn hình (Giữ nguyên cửa sổ bạn đang làm việc)" ToolTip="Tự động bảo vệ và giữ nguyên cửa sổ bạn đang làm việc (trình duyệt, văn bản...), không để Antigravity giật chuột hay focus khi click." Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" Margin="0,8,0,0" Foreground="#38bdf8" FontWeight="SemiBold" />
@@ -592,7 +593,9 @@
 
                                 <CheckBox x:Name="ChkMinimizeToTray" Content="Thu nhỏ xuống khay hệ thống khi đóng cửa sổ" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
 
-                                <CheckBox x:Name="ChkStartMinimized" Content="Khởi động thu nhỏ sẵn dưới khay hệ thống" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,14" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                <CheckBox x:Name="ChkStartMinimized" Content="Khởi động thu nhỏ sẵn dưới khay hệ thống" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
+
+                                <CheckBox x:Name="ChkAutoCloseProceededPlansSettings" Content="Tự động đóng tab Implementation Plan sau khi Proceed (không xóa file)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,14" Checked="SettingChanged" Unchecked="SettingChanged" />
 
                                 <Border Background="#1f2937" CornerRadius="8" Padding="12" Margin="0,0,0,14">
                                     <StackPanel>
@@ -606,7 +609,7 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox x:Name="TxtSoundFilePath" Text="done.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <TextBox x:Name="TxtSoundFilePath" Text="Sounds/done.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
                                                 <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestSound_Click" />
                                             </Grid>
                                         </StackPanel>
@@ -619,7 +622,7 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox x:Name="TxtAcceptSoundFilePath" Text="accept_all.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <TextBox x:Name="TxtAcceptSoundFilePath" Text="Sounds/accept_all.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
                                                 <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestAcceptSound_Click" />
                                             </Grid>
                                         </StackPanel>
@@ -632,7 +635,7 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox x:Name="TxtSubmitSoundFilePath" Text="submit.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <TextBox x:Name="TxtSubmitSoundFilePath" Text="Sounds/submit.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
                                                 <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestSubmitSound_Click" />
                                             </Grid>
                                         </StackPanel>
@@ -645,7 +648,7 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox x:Name="TxtPlanSoundFilePath" Text="plan.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <TextBox x:Name="TxtPlanSoundFilePath" Text="Sounds/plan.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
                                                 <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestPlanSound_Click" />
                                             </Grid>
                                         </StackPanel>

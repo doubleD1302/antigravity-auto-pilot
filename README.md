@@ -14,12 +14,13 @@
 - **Bảo vệ dòng lệnh Terminal (Destructive Protection)**: Quét ngữ cảnh xung quanh nút bấm. Tự động **CHẶN NGAY** nếu phát hiện các câu lệnh nguy hiểm như `rm -rf`, `del /s`, `format`, `git reset --hard`, `DROP TABLE`, `docker system prune`, v.v.
 - **Blacklist tuyệt đối**: Không bao giờ tự click các nút có tính chất hủy hoại (`Reject`, `Decline`, `Delete`, `Cancel`, `Discard`, `Reset`, `Terminate`, `Drop`, `Revert`, `Undo All`).
 - **Tự động trả lời câu hỏi tương tác (`ask_question`)**: Tự động chọn Option 1 (`Yes` / `Allow` / `Recommended`) và gửi `Submit` ngay lập tức, kèm chống spam phím Enter.
-- **Hệ thống thông báo âm thanh đa kênh (Bật/Tắt linh hoạt)**:
-  - 🔔 `done.mp3`: Thông báo khi Antigravity hoàn thành trọn vẹn chuỗi nhiệm vụ (có thuật toán chống báo sớm giữa các tool call).
-  - ✨ `accept_all.mp3`: Thông báo khi vừa tự động duyệt `Accept All` hoặc `Accept` diff.
-  - ⚡ `submit.mp3`: Thông báo khi vừa tự động duyệt gửi form câu hỏi tương tác.
-  - 📋 `plan.mp3`: Thông báo khi Antigravity đưa ra bản kế hoạch `Implementation Plan` cần xem xét.
-  - Hỗ trợ tùy chỉnh âm lượng và bật/tắt độc lập từng loại âm thanh ngay trên giao diện hoặc lưu cấu hình vào `settings.json`.
+- **Hệ thống thông báo âm thanh tập trung trong thư mục `Sounds/` (Bật/Tắt linh hoạt)**:
+  - 🔔 `Sounds/done.mp3`: Thông báo khi Antigravity hoàn thành trọn vẹn chuỗi nhiệm vụ (có thuật toán chống báo sớm giữa các tool call).
+  - ✨ `Sounds/accept_all.mp3`: Thông báo khi vừa tự động duyệt `Accept All` hoặc `Accept` diff.
+  - ⚡ `Sounds/submit.mp3`: Thông báo khi vừa tự động duyệt gửi form câu hỏi tương tác.
+  - 📋 `Sounds/plan.mp3`: Thông báo khi Antigravity đưa ra bản kế hoạch `Implementation Plan` cần xem xét.
+  - Toàn bộ file âm thanh được gom gọn gàng vào thư mục `Sounds/`. Hỗ trợ tùy chỉnh âm lượng và bật/tắt độc lập từng loại âm thanh ngay trên giao diện hoặc lưu cấu hình vào `settings.json`.
+- **Tự động đóng tab Implementation Plan sau khi Proceed**: Tự động nhận diện và đóng tab editor `implementation_plan.md` trong Antigravity IDE ngay sau khi kế hoạch được bấm Proceed (hoàn toàn KHÔNG xóa file markdown trên ổ cứng, chỉ đóng tab trong trình soạn thảo giúp màn hình làm việc luôn gọn gàng). Có thể bật/tắt tùy chọn này trên giao diện hoặc cấu hình `AutoCloseProceededPlans: true`.
 - **Emergency Stop toàn cầu**: Nhấn `Ctrl + Shift + F12` dừng ngay lập tức mọi hành vi auto click, kể cả khi bạn đang thao tác ở cửa sổ khác. Khôi phục nhanh bằng `Ctrl + Shift + F11`.
 - **Chế độ hoạt động linh hoạt**: 3 mode: **An Toàn (Safe)**, **Tiêu Chuẩn (Normal)**, **Tự Động Toàn Diện (Full Auto)**.
 - **Chạy nền trên System Tray**: Thu gọn xuống khay hệ thống, hiển thị thông báo balloon khi có câu lệnh nguy hiểm bị chặn.

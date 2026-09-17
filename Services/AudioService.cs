@@ -11,7 +11,7 @@ public class AudioService
     private MediaPlayer? _mediaPlayer;
     private readonly object _lock = new();
 
-    public string ResolveSoundPath(string? requestedPath = null, string defaultFileName = "done.mp3")
+    public string ResolveSoundPath(string? requestedPath = null, string defaultFileName = "Sounds/done.mp3")
     {
         string fileName = string.IsNullOrWhiteSpace(requestedPath) ? defaultFileName : requestedPath.Trim();
 
@@ -21,11 +21,19 @@ public class AudioService
             return fileName;
         }
 
+        string bareName = Path.GetFileName(fileName);
+
         // 2. Relative to App Base Directory
         string appBasePath = Path.Combine(AppContext.BaseDirectory, fileName);
         if (File.Exists(appBasePath))
         {
             return appBasePath;
+        }
+
+        string appBaseSoundsPath = Path.Combine(AppContext.BaseDirectory, "Sounds", bareName);
+        if (File.Exists(appBaseSoundsPath))
+        {
+            return appBaseSoundsPath;
         }
 
         // 3. Check source project directory
@@ -35,6 +43,12 @@ public class AudioService
             return Path.GetFullPath(devPath);
         }
 
+        string devSoundsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\", "Sounds", bareName);
+        if (File.Exists(devSoundsPath))
+        {
+            return Path.GetFullPath(devSoundsPath);
+        }
+
         // 4. Current working directory
         string cwdPath = Path.Combine(Environment.CurrentDirectory, fileName);
         if (File.Exists(cwdPath))
@@ -42,7 +56,13 @@ public class AudioService
             return cwdPath;
         }
 
-        return appBasePath;
+        string cwdSoundsPath = Path.Combine(Environment.CurrentDirectory, "Sounds", bareName);
+        if (File.Exists(cwdSoundsPath))
+        {
+            return cwdSoundsPath;
+        }
+
+        return appBaseSoundsPath;
     }
 
     /// <summary>
@@ -86,35 +106,35 @@ public class AudioService
     }
 
     /// <summary>
-    /// Plays the completion notification sound (done.mp3).
+    /// Plays the completion notification sound (Sounds/done.mp3).
     /// </summary>
     public bool PlayDone(string? customPath = null, int volumePercent = 100)
     {
-        return PlaySound(customPath, "done.mp3", volumePercent);
+        return PlaySound(customPath, "Sounds/done.mp3", volumePercent);
     }
 
     /// <summary>
-    /// Plays the submit approval sound (submit.mp3).
+    /// Plays the submit approval sound (Sounds/submit.mp3).
     /// </summary>
     public bool PlaySubmit(string? customPath = null, int volumePercent = 100)
     {
-        return PlaySound(customPath, "submit.mp3", volumePercent);
+        return PlaySound(customPath, "Sounds/submit.mp3", volumePercent);
     }
 
     /// <summary>
-    /// Plays the accept / accept all sound (accept_all.mp3).
+    /// Plays the accept / accept all sound (Sounds/accept_all.mp3).
     /// </summary>
     public bool PlayAccept(string? customPath = null, int volumePercent = 100)
     {
-        return PlaySound(customPath, "accept_all.mp3", volumePercent);
+        return PlaySound(customPath, "Sounds/accept_all.mp3", volumePercent);
     }
 
     /// <summary>
-    /// Plays the implementation plan notification sound (plan.mp3).
+    /// Plays the implementation plan notification sound (Sounds/plan.mp3).
     /// </summary>
     public bool PlayPlan(string? customPath = null, int volumePercent = 100)
     {
-        return PlaySound(customPath, "plan.mp3", volumePercent);
+        return PlaySound(customPath, "Sounds/plan.mp3", volumePercent);
     }
 
     private void PlayInternal(string filePath, int volumePercent)
