@@ -48,6 +48,11 @@ public class AutomationScanner : IDisposable
     private readonly HashSet<string> _detectedPlanIds = new();
     private bool _staleSnapshotTaken = false;
 
+    private readonly HashSet<string> _seenResponseIds = new();
+    private string? _lastCompletedResponseId = null;
+    private bool _staleResponseSnapshotTaken = false;
+    private double _highestSeenResponseY = double.MinValue;
+
     public AutomationScanner(AppSettings settings)
     {
         _settings = settings;
@@ -91,6 +96,10 @@ public class AutomationScanner : IDisposable
             _lastActionExecutedTime = DateTime.MinValue;
             _hasPendingPlan = false;
             _planDetectedTime = DateTime.MinValue;
+            _seenResponseIds.Clear();
+            _lastCompletedResponseId = null;
+            _staleResponseSnapshotTaken = false;
+            _highestSeenResponseY = double.MinValue;
 
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
@@ -194,6 +203,7 @@ public class AutomationScanner : IDisposable
                 bool proceedButtonFoundInCurrentScan = false;
                 bool clickedInThisPass = false;
                 bool hasPendingInteractiveActions = false;
+                var allDiscoveredToolbars = new List<ResponseFeedbackToolbar>();
 
                 // 2. Discover and execute actions across ALL active Antigravity windows
                 foreach (var window in windows)
@@ -243,6 +253,10 @@ public class AutomationScanner : IDisposable
                         }
                         catch { return 0; }
                     });
+
+                    // Discover chat response feedback toolbars (Copy, Good response, Bad response) in this window
+                    var toolbarsInWin = FindResponseFeedbackToolbars(candidateList, windowRect);
+                    allDiscoveredToolbars.AddRange(toolbarsInWin);
 
                     // Snapshot stale elements on startup if configured
                     if (!_staleSnapshotTaken)
@@ -322,6 +336,8 @@ public class AutomationScanner : IDisposable
                                         {
                                             clickedInThisPass = true;
                                             _lastActionExecutedTime = DateTime.UtcNow;
+                                            _hasActiveGenerationObserved = true;
+                                            _stopDisappearedTime = null;
                                             break;
                                         }
                                     }
@@ -352,6 +368,8 @@ public class AutomationScanner : IDisposable
                                         {
                                             clickedInThisPass = true;
                                             _lastActionExecutedTime = DateTime.UtcNow;
+                                            _hasActiveGenerationObserved = true;
+                                            _stopDisappearedTime = null;
                                             break;
                                         }
                                         continue;
@@ -479,6 +497,8 @@ public class AutomationScanner : IDisposable
                                 TotalActionsClicked++;
                                 LatestAction = $"Đã click: {action.ButtonText}";
                                 _lastActionExecutedTime = DateTime.UtcNow;
+                                _hasActiveGenerationObserved = true;
+                                _stopDisappearedTime = null;
                                 ActionExecuted?.Invoke(action, clickResult.MethodUsed);
 
                                 if (action.Kind == ActionKind.Submit || action.ButtonText.Equals("Submit", StringComparison.OrdinalIgnoreCase))
@@ -532,7 +552,30 @@ public class AutomationScanner : IDisposable
                 }
             }
 
-                // 4.5 Auto-close Proceeded Plans Check (if user clicked Proceed manually or Proceed disappeared during generation)
+                // 4.5 Process discovered chat response feedback toolbars
+                allDiscoveredToolbars.Sort((a, b) => b.Y.CompareTo(a.Y));
+                var latestToolbar = allDiscoveredToolbars.FirstOrDefault();
+
+                // Snapshot existing chat responses on initial scan pass so they are never falsely alerted
+                if (!_staleResponseSnapshotTaken && allDiscoveredToolbars.Count > 0)
+                {
+                    _staleResponseSnapshotTaken = true;
+                    foreach (var tb in allDiscoveredToolbars)
+                    {
+                        _seenResponseIds.Add(tb.Identifier);
+                        if (tb.BoundingBox.Bottom > _highestSeenResponseY)
+                        {
+                            _highestSeenResponseY = tb.BoundingBox.Bottom;
+                        }
+                    }
+                    if (latestToolbar != null)
+                    {
+                        _lastCompletedResponseId = latestToolbar.Identifier;
+                        DiagnosticLogged?.Invoke($"[RESPONSE_DETECTOR] Khởi tạo: Đã ghi nhận {allDiscoveredToolbars.Count} response chat cũ trên màn hình. Bỏ qua các response này.");
+                    }
+                }
+
+                // 4.6 Auto-close Proceeded Plans Check (if user clicked Proceed manually or Proceed disappeared during generation)
                 if (_hasPendingPlan && !proceedButtonFoundInCurrentScan && currentSettings.AutoCloseProceededPlans)
                 {
                     if (_hasActiveGenerationObserved || stopButtonFoundInCurrentScan || (DateTime.UtcNow - _planDetectedTime).TotalSeconds >= 2.5)
@@ -556,22 +599,48 @@ public class AutomationScanner : IDisposable
 
                 _stopButtonPreviouslyPresent = stopButtonFoundInCurrentScan;
 
-                // Accurate completion trigger conditions:
-                // 1. Antigravity was actively generating in this turn/session (_hasActiveGenerationObserved == true)
-                // 2. Stop button is currently NOT present
-                // 3. Stop button has been absent continuously for at least 4.5s (prevents false trigger during tool calls / network jitter)
-                // 4. No pending interactive questions or approval buttons waiting on screen
-                // 5. No action was clicked in this pass
-                // 6. Grace period: at least 6.0s elapsed since last action clicked by Auto Pilot
                 DateTime now = DateTime.UtcNow;
-                if (_hasActiveGenerationObserved &&
+
+                // PRIMARY COMPLETION DETECTION:
+                // When Antigravity completes a task, it renders the final chat response with interactive action icons
+                // (Copy, Good response / Thumbs up, Bad response / Thumbs down) at the bottom-right of that response.
+                bool canTriggerCompletion = _hasActiveGenerationObserved ||
+                                            (_lastActionExecutedTime != DateTime.MinValue && (now - _lastActionExecutedTime).TotalSeconds <= 60);
+
+                if (canTriggerCompletion &&
+                    latestToolbar != null &&
+                    !stopButtonFoundInCurrentScan &&
+                    !hasPendingInteractiveActions &&
+                    !clickedInThisPass &&
+                    (now - _lastActionExecutedTime).TotalMilliseconds >= 1200)
+                {
+                    bool isNewResponse = !_seenResponseIds.Contains(latestToolbar.Identifier);
+                    bool isDifferentFromLastAlert = latestToolbar.Identifier != _lastCompletedResponseId;
+
+                    if (isNewResponse || isDifferentFromLastAlert)
+                    {
+                        _seenResponseIds.Add(latestToolbar.Identifier);
+                        _lastCompletedResponseId = latestToolbar.Identifier;
+                        if (latestToolbar.BoundingBox.Bottom > _highestSeenResponseY)
+                        {
+                            _highestSeenResponseY = latestToolbar.BoundingBox.Bottom;
+                        }
+
+                        DiagnosticLogged?.Invoke($"[TASK_COMPLETE] Phát hiện đoạn chat hoàn thành với cụm icon phản hồi ({latestToolbar.GetDescription()}) tại Y={latestToolbar.BoundingBox.Bottom:0}. Báo hoàn tất tác vụ!");
+                        TriggerCompletion();
+                    }
+                }
+                // FALLBACK COMPLETION DETECTION:
+                // If active generation was observed, Stop button disappeared > 5s ago, and no pending actions remain
+                else if (_hasActiveGenerationObserved &&
                     !stopButtonFoundInCurrentScan &&
                     !hasPendingInteractiveActions &&
                     !clickedInThisPass &&
                     (now - _lastActionExecutedTime).TotalMilliseconds >= 6000 &&
                     _stopDisappearedTime.HasValue &&
-                    (now - _stopDisappearedTime.Value).TotalMilliseconds >= 4500)
+                    (now - _stopDisappearedTime.Value).TotalMilliseconds >= 5000)
                 {
+                    DiagnosticLogged?.Invoke("[TASK_COMPLETE] Kích hoạt hoàn tất tác vụ qua cơ chế dự phòng (Stop button biến mất > 5s).");
                     TriggerCompletion();
                 }
 
@@ -595,7 +664,7 @@ public class AutomationScanner : IDisposable
         _hasActiveGenerationObserved = false;
         _stopDisappearedTime = null;
         DateTime now = DateTime.UtcNow;
-        if ((now - _lastCompletionAlertTime).TotalSeconds >= 8)
+        if ((now - _lastCompletionAlertTime).TotalSeconds >= 5)
         {
             _lastCompletionAlertTime = now;
             AntigravityCompleted?.Invoke();
@@ -1154,6 +1223,147 @@ public class AutomationScanner : IDisposable
     }
 
     #endregion
+
+    #endregion
+
+    #region Response Feedback Toolbar Detection
+
+    public class ResponseFeedbackToolbar
+    {
+        public AutomationElement? CopyButton { get; set; }
+        public AutomationElement GoodButton { get; set; } = null!;
+        public AutomationElement? BadButton { get; set; }
+        public string Identifier { get; set; } = string.Empty;
+        public Rect BoundingBox { get; set; }
+        public double Y => BoundingBox.Bottom;
+
+        public string GetDescription()
+        {
+            var parts = new List<string>();
+            if (CopyButton != null) parts.Add("Sao chép (Copy)");
+            if (GoodButton != null) parts.Add("Hài lòng (👍 Good)");
+            if (BadButton != null) parts.Add("Chưa hài lòng (👎 Bad)");
+            return string.Join(", ", parts);
+        }
+    }
+
+    private List<ResponseFeedbackToolbar> FindResponseFeedbackToolbars(List<AutomationElement> candidateList, Rect windowRect)
+    {
+        var toolbars = new List<ResponseFeedbackToolbar>();
+        var goodButtons = new List<(AutomationElement elem, Rect rect, string text)>();
+        var badButtons = new List<(AutomationElement elem, Rect rect, string text)>();
+        var copyButtons = new List<(AutomationElement elem, Rect rect, string text)>();
+
+        foreach (var el in candidateList)
+        {
+            try
+            {
+                string rawName = el.Current.Name ?? string.Empty;
+                string aid = el.Current.AutomationId ?? string.Empty;
+                string help = el.Current.HelpText ?? string.Empty;
+                string text = !string.IsNullOrEmpty(rawName) ? rawName : (!string.IsNullOrEmpty(help) ? help : aid);
+
+                if (string.IsNullOrWhiteSpace(text)) continue;
+
+                // Explicitly ignore "Copy code" buttons inside code blocks
+                if (text.Contains("code", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var rect = el.Current.BoundingRectangle;
+                // Exclude elements outside reasonable icon size (standard buttons are ~31x31)
+                if (rect.Width < 15 || rect.Width > 70 || rect.Height < 15 || rect.Height > 70) continue;
+
+                // Exclude top bar / menu bar area
+                if (!windowRect.IsEmpty && (rect.Top - windowRect.Top) < 60) continue;
+
+                if (IsGoodResponseButton(text, aid))
+                {
+                    goodButtons.Add((el, rect, text));
+                }
+                else if (IsBadResponseButton(text, aid))
+                {
+                    badButtons.Add((el, rect, text));
+                }
+                else if (IsCopyResponseButton(text, aid))
+                {
+                    copyButtons.Add((el, rect, text));
+                }
+            }
+            catch { }
+        }
+
+        // Match Good and Bad / Copy buttons that belong to the same response message footer
+        foreach (var good in goodButtons)
+        {
+            // Bad response is on the same horizontal line, to the right within 80px
+            var matchingBad = badButtons.FirstOrDefault(b =>
+                Math.Abs(b.rect.Top - good.rect.Top) <= 8 &&
+                Math.Abs(b.rect.Left - good.rect.Left) <= 80);
+
+            // Copy button is on the same horizontal line, to the left within 80px
+            var matchingCopy = copyButtons.FirstOrDefault(c =>
+                Math.Abs(c.rect.Top - good.rect.Top) <= 8 &&
+                Math.Abs(good.rect.Left - c.rect.Left) <= 80);
+
+            if (matchingBad.elem != null || matchingCopy.elem != null)
+            {
+                var unionRect = good.rect;
+                if (matchingBad.elem != null) unionRect.Union(matchingBad.rect);
+                if (matchingCopy.elem != null) unionRect.Union(matchingCopy.rect);
+
+                string id = AutomationAction.GenerateElementId(good.elem, "GoodResponse");
+                if (matchingBad.elem != null)
+                {
+                    id += "_" + AutomationAction.GenerateElementId(matchingBad.elem, "BadResponse");
+                }
+
+                toolbars.Add(new ResponseFeedbackToolbar
+                {
+                    GoodButton = good.elem,
+                    BadButton = matchingBad.elem,
+                    CopyButton = matchingCopy.elem,
+                    Identifier = id,
+                    BoundingBox = unionRect
+                });
+            }
+        }
+
+        // Sort descending by Y (bottom-most / latest first)
+        toolbars.Sort((a, b) => b.Y.CompareTo(a.Y));
+        return toolbars;
+    }
+
+    private static bool IsGoodResponseButton(string text, string automationId)
+    {
+        return text.Equals("Good response", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("good response", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("thumbs up", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("Helpful", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("thích", StringComparison.OrdinalIgnoreCase) ||
+               automationId.Contains("goodresponse", StringComparison.OrdinalIgnoreCase) ||
+               automationId.Contains("thumbsup", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsBadResponseButton(string text, string automationId)
+    {
+        return text.Equals("Bad response", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("bad response", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("thumbs down", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("Unhelpful", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("không thích", StringComparison.OrdinalIgnoreCase) ||
+               automationId.Contains("badresponse", StringComparison.OrdinalIgnoreCase) ||
+               automationId.Contains("thumbsdown", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCopyResponseButton(string text, string automationId)
+    {
+        if (text.Contains("code", StringComparison.OrdinalIgnoreCase)) return false;
+
+        return text.Equals("Copy", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("Copy message", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("Copy response", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("Sao chép", StringComparison.OrdinalIgnoreCase) ||
+               automationId.Equals("copy", StringComparison.OrdinalIgnoreCase);
+    }
 
     #endregion
 
