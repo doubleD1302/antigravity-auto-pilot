@@ -1,0 +1,17 @@
+## Build and Artifact Folders
+bin/
+obj/
+publish/
+
+## Visual Studio & IDE files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Runtime Logs and Local User Settings
+logs/
+*.log
+crash.log
+settings.json

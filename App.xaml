@@ -1,0 +1,27 @@
+<Application x:Class="AntigravityAutoPilot.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="UI/MainWindow.xaml">
+    <Application.Resources>
+        <!-- Dark Theme Global Colors -->
+        <Color x:Key="BgDarkColor">#090d16</Color>
+        <Color x:Key="CardBgColor">#111827</Color>
+        <Color x:Key="CardBorderColor">#1f2937</Color>
+        <Color x:Key="AccentCyanColor">#38bdf8</Color>
+        <Color x:Key="AccentGreenColor">#22c55e</Color>
+        <Color x:Key="AccentAmberColor">#f59e0b</Color>
+        <Color x:Key="AccentRedColor">#ef4444</Color>
+        <Color x:Key="TextPrimaryColor">#f3f4f6</Color>
+        <Color x:Key="TextMutedColor">#9ca3af</Color>
+
+        <SolidColorBrush x:Key="BgDarkBrush" Color="{StaticResource BgDarkColor}" />
+        <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource CardBgColor}" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource CardBorderColor}" />
+        <SolidColorBrush x:Key="AccentCyanBrush" Color="{StaticResource AccentCyanColor}" />
+        <SolidColorBrush x:Key="AccentGreenBrush" Color="{StaticResource AccentGreenColor}" />
+        <SolidColorBrush x:Key="AccentAmberBrush" Color="{StaticResource AccentAmberColor}" />
+        <SolidColorBrush x:Key="AccentRedBrush" Color="{StaticResource AccentRedColor}" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
+    </Application.Resources>
+</Application>

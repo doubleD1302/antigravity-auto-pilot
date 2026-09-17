@@ -1,0 +1,686 @@
+<Window x:Class="AntigravityAutoPilot.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Antigravity Auto Pilot - Tự Động Duyệt Lệnh &amp; Diff"
+        Icon="/auto_pilot_logo.png"
+        Height="740" Width="940"
+        MinHeight="620" MinWidth="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#0b0f19"
+        Foreground="#f3f4f6"
+        FontFamily="Segoe UI, Segoe UI Variable, Inter, sans-serif">
+
+    <Window.Resources>
+        <!-- Modern Button Style -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#1f2937" />
+            <Setter Property="Foreground" Value="#f9fafb" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#374151" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#374151" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#4b5563" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#111827" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.5" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Start Button -->
+        <Style x:Key="PrimaryStartButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#15803d" />
+            <Setter Property="BorderBrush" Value="#22c55e" />
+            <Setter Property="FontSize" Value="15" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#16a34a" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Warning Pause Button -->
+        <Style x:Key="WarningPauseButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#b45309" />
+            <Setter Property="BorderBrush" Value="#f59e0b" />
+            <Setter Property="FontSize" Value="15" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#d97706" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Modern CheckBox Style -->
+        <Style x:Key="ModernCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#e5e7eb" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Margin" Value="0,4,12,4" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <!-- Modern RadioButton Style -->
+        <Style x:Key="ModernRadioButton" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#e5e7eb" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Margin" Value="0,4,16,4" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header -->
+            <RowDefinition Height="Auto" />
+            <!-- Main Content (Tabs) -->
+            <RowDefinition Height="*" />
+            <!-- Footer Status Bar -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="0,0,0,1" Padding="20,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Title & Tagline -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Brand Logo Image -->
+                    <Image Source="/auto_pilot_logo.png" Width="40" Height="40" Margin="0,0,12,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="ANTIGRAVITY AUTO PILOT" FontSize="18" FontWeight="Bold" Foreground="#f9fafb" />
+                        <TextBlock Text="Hệ Thống Tự Động Duyệt Lệnh &amp; Tiến Trình Cho Google Antigravity" FontSize="11" Foreground="#9ca3af" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Status Indicators -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Engine Status Badge -->
+                    <Border x:Name="EngineStatusBadge" Background="#1f2937" BorderBrush="#374151" BorderThickness="1" CornerRadius="20" Padding="12,5" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse x:Name="EngineStatusDot" Width="8" Height="8" Fill="#9ca3af" Margin="0,0,7,0" />
+                            <TextBlock x:Name="EngineStatusText" Text="ĐÃ DỪNG" FontSize="11" FontWeight="Bold" Foreground="#e5e7eb" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Antigravity Connection Badge -->
+                    <Border x:Name="ConnectionBadge" Background="#1f2937" BorderBrush="#374151" BorderThickness="1" CornerRadius="20" Padding="12,5">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse x:Name="ConnectionDot" Width="8" Height="8" Fill="#ef4444" Margin="0,0,7,0" />
+                            <TextBlock x:Name="ConnectionText" Text="Đang chờ Antigravity..." FontSize="11" FontWeight="Bold" Foreground="#e5e7eb" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN CONTENT TABS -->
+        <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="16,10,16,10">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Foreground" Value="#9ca3af" />
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="Padding" Value="16,8" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border x:Name="tabBorder"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        BorderThickness="0,0,0,2"
+                                        Padding="{TemplateBinding Padding}"
+                                        Margin="0,0,6,0">
+                                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="tabBorder" Property="BorderBrush" Value="#38bdf8" />
+                                        <Setter Property="Foreground" Value="#38bdf8" />
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Foreground" Value="#f3f4f6" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- TAB 1: BẢNG ĐIỀU KHIỂN -->
+            <TabItem Header="Bảng Điều Khiển">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <!-- Controls & Quick Stats -->
+                            <RowDefinition Height="Auto" />
+                            <!-- Whitelist & Modes -->
+                            <RowDefinition Height="Auto" />
+                            <!-- Timing & Protection -->
+                            <RowDefinition Height="Auto" />
+                            <!-- Sound Notification on Completion -->
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- ROW 1: NÚT ĐIỀU KHIỂN & THỐNG KÊ HOẠT ĐỘNG -->
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Thẻ điều khiển chính -->
+                            <Border Grid.Column="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,12,0">
+                                <StackPanel>
+                                    <TextBlock Text="ĐIỀU KHIỂN HOẠT ĐỘNG" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" Margin="0,0,0,12" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- NÚT BẮT ĐẦU -->
+                                        <Button x:Name="BtnStart" Grid.Column="0" Style="{StaticResource PrimaryStartButton}" Height="46" Click="BtnStart_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="▶ BẮT ĐẦU" FontWeight="Bold" VerticalAlignment="Center" />
+                                                <Border Background="#166534" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                                    <TextBlock Text="Ctrl+Shift+F11" FontSize="9" FontWeight="SemiBold" Foreground="#86efac" />
+                                                </Border>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- NÚT TẠM DỪNG -->
+                                        <Button x:Name="BtnPause" Grid.Column="2" Style="{StaticResource WarningPauseButton}" Height="46" Click="BtnPause_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="⏸ TẠM DỪNG" FontWeight="Bold" VerticalAlignment="Center" />
+                                                <Border Background="#92400e" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                                    <TextBlock Text="Ctrl+Shift+F12" FontSize="9" FontWeight="SemiBold" Foreground="#fde68a" />
+                                                </Border>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="Mẹo: Bấm phím tắt Ctrl+Shift+F12 bất kỳ lúc nào để tạm dừng khẩn cấp." FontSize="11" Foreground="#6b7280" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Thống kê: Số hành động đã click -->
+                            <Border Grid.Column="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,12,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="HÀNH ĐỘNG ĐÃ DUYỆT" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                    <TextBlock x:Name="TxtActionsCount" Text="0" FontSize="32" FontWeight="ExtraBold" Foreground="#22c55e" Margin="0,4,0,0" />
+                                    <TextBlock Text="Kích hoạt ngầm trong nền" FontSize="11" Foreground="#6b7280" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Thống kê: Số lệnh đã chặn -->
+                            <Border Grid.Column="2" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="LỆNH ĐÃ BỊ CHẶN" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                    <TextBlock x:Name="TxtBlockedCount" Text="0" FontSize="32" FontWeight="ExtraBold" Foreground="#ef4444" Margin="0,4,0,0" />
+                                    <TextBlock Text="Nguy hiểm / Phá hủy" FontSize="11" Foreground="#6b7280" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ROW 2: WHITELIST HÀNH ĐỘNG & CHẾ ĐỘ HOẠT ĐỘNG -->
+                        <Grid Grid.Row="1" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.5*" />
+                                <ColumnDefinition Width="1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Thẻ Danh sách duyệt tự động (Whitelist) -->
+                            <Border Grid.Column="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,12,0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <TextBlock Text="DANH SÁCH DUYỆT TỰ ĐỘNG (WHITELIST)" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                        <TextBlock Text="— Bật/tắt các loại nút cần tự động duyệt" FontSize="11" Foreground="#6b7280" Margin="6,0,0,0" />
+                                    </StackPanel>
+
+                                    <!-- Lưới Checkbox -->
+                                    <UniformGrid Columns="2">
+                                        <CheckBox x:Name="ChkAccept" Content="Accept (Duyệt diff)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkAcceptAll" Content="Accept All (Duyệt tất cả)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkContinue" Content="Continue (Tiếp tục)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkRun" Content="Run (Chạy lệnh an toàn)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkSubmit" Content="Submit (Gửi phản hồi)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkRetry" Content="Retry (Thử lại khi lỗi)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkAllow" Content="Allow (Cho phép chạy)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkApply" Content="Apply (Áp dụng thay đổi)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkConfirm" Content="Confirm (Xác nhận)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkProceed" Content="Proceed (Kế hoạch Plan)" ToolTip="Tự động bấm Proceed trên kế hoạch implementation plan (chỉ bấm 1 lần duy nhất)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <CheckBox x:Name="ChkAutoAnswer" Content="Tự Trả Lời (Option 1)" ToolTip="Tự động chọn Option 1 (Yes/Allow) trên form câu hỏi modal và bấm Submit" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                    </UniformGrid>
+
+                                    <CheckBox x:Name="ChkPreventFocusStealing" Content="🛡️ Chống giật màn hình (Giữ nguyên cửa sổ bạn đang làm việc)" ToolTip="Tự động bảo vệ và giữ nguyên cửa sổ bạn đang làm việc (trình duyệt, văn bản...), không để Antigravity giật chuột hay focus khi click." Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" Margin="0,8,0,0" Foreground="#38bdf8" FontWeight="SemiBold" />
+
+                                    <Border Background="#1f2937" CornerRadius="6" Padding="10" Margin="0,10,0,0">
+                                        <TextBlock Text="🛡️ Danh sách đen tuyệt đối LUÔN BẬT (Reject, Decline, Delete, Discard, Cancel, Reset, Terminate, Drop, v.v.)." FontSize="11" Foreground="#f87171" TextWrapping="Wrap" />
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Thẻ Chế độ hoạt động -->
+                            <Border Grid.Column="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="18">
+                                <StackPanel>
+                                    <TextBlock Text="CHẾ ĐỘ HOẠT ĐỘNG" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" Margin="0,0,0,12" />
+
+                                    <RadioButton x:Name="RbSafe" Content="Chế Độ An Toàn (Safe)" Style="{StaticResource ModernRadioButton}" Checked="ModeRadio_Checked" />
+                                    <TextBlock Text="Chỉ duyệt sửa file, diff, continue &amp; submit. Nghiêm cấm mọi lệnh terminal." FontSize="11" Foreground="#6b7280" Margin="22,-2,0,8" TextWrapping="Wrap" />
+
+                                    <RadioButton x:Name="RbNormal" Content="Chế Độ Tiêu Chuẩn (Normal)" Style="{StaticResource ModernRadioButton}" IsChecked="True" Checked="ModeRadio_Checked" />
+                                    <TextBlock Text="Duyệt tất cả hành động. Lệnh terminal được kiểm tra nghiêm ngặt qua danh sách đen." FontSize="11" Foreground="#6b7280" Margin="22,-2,0,8" TextWrapping="Wrap" />
+
+                                    <RadioButton x:Name="RbFullAuto" Content="Tự Động Hoàn Toàn (Full Auto)" Style="{StaticResource ModernRadioButton}" Checked="ModeRadio_Checked" />
+                                    <TextBlock Text="Tự động duyệt toàn bộ whitelist. Kiểm tra an toàn và danh sách đen vẫn luôn kích hoạt." FontSize="11" Foreground="#6b7280" Margin="22,-2,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ROW 3: THỜI GIAN & TẦN SUẤT QUÉT -->
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Thanh trượt tần suất quét -->
+                            <Border Grid.Column="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,0,12,0">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="TẦN SUẤT QUÉT CỬA SỔ" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                        <TextBlock x:Name="TxtScanIntervalVal" Text="400 ms" FontSize="12" FontWeight="Bold" Foreground="#38bdf8" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="SliderScanInterval" Minimum="100" Maximum="3000" Value="400" SmallChange="50" LargeChange="100" IsSnapToTickEnabled="True" TickFrequency="50" ValueChanged="SliderScanInterval_ValueChanged" />
+                                    <TextBlock Text="Quét nhanh để click ngay khi nút xuất hiện. Tiết kiệm CPU bằng cách quét trúng đích cửa sổ." FontSize="11" Foreground="#6b7280" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Thanh trượt chống click lặp (Debounce) -->
+                            <Border Grid.Column="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="18">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="THỜI GIAN CHỜ CHỐNG CLICK LẶP (DEBOUNCE)" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                        <TextBlock x:Name="TxtDebounceVal" Text="1200 ms" FontSize="12" FontWeight="Bold" Foreground="#38bdf8" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="SliderDebounce" Minimum="500" Maximum="3000" Value="1200" SmallChange="100" LargeChange="200" IsSnapToTickEnabled="True" TickFrequency="100" ValueChanged="SliderDebounce_ValueChanged" />
+                                    <TextBlock Text="Ngăn chặn việc click spam liên tục vào cùng một phần tử giao diện." FontSize="11" Foreground="#6b7280" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ROW 4: THÔNG BÁO ÂM THANH (done.mp3, accept_all.mp3, submit.mp3 & plan.mp3) -->
+                        <Border Grid.Row="3" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="CẤU HÌNH BẬT/TẮT ÂM THANH THÔNG BÁO" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" Margin="0,0,0,12" />
+
+                                <!-- Mục 1: Done.mp3 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="🔔 ÂM BÁO HOÀN THÀNH TÁC VỤ (done.mp3)" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" />
+                                            <Border Background="#0369a1" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                <TextBlock Text="BÁO HOÀN TẤT" FontSize="9" FontWeight="Bold" Foreground="#bae6fd" />
+                                            </Border>
+                                        </StackPanel>
+                                        <CheckBox x:Name="ChkSoundNotification" Content="Tự động phát done.mp3 khi Antigravity hoàn thành chuỗi tác vụ" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <TextBlock Text="Phát âm thanh thông báo khi Antigravity IDE hoàn thành toàn bộ lượt công việc." FontSize="11" Foreground="#6b7280" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="BtnTestSound" Content="🔊 Nghe thử done.mp3" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Click="BtnTestSound_Click" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Separator Background="#1f2937" Margin="0,0,0,12" />
+
+                                <!-- Mục 2: Accept_all.mp3 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="✨ ÂM BÁO DUYỆT ACCEPT ALL (accept_all.mp3)" FontSize="11" FontWeight="Bold" Foreground="#22c55e" />
+                                            <Border Background="#15803d" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                <TextBlock Text="BÁO ACCEPT ALL" FontSize="9" FontWeight="Bold" Foreground="#bbf7d0" />
+                                            </Border>
+                                        </StackPanel>
+                                        <CheckBox x:Name="ChkAcceptSoundNotification" Content="Tự động phát accept_all.mp3 khi duyệt Accept / Accept All diff" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <TextBlock Text="Phát âm thanh mỗi khi Auto Pilot tự động bấm duyệt Accept hoặc Accept All thay đổi code." FontSize="11" Foreground="#6b7280" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="BtnTestAcceptSound" Content="🔊 Nghe thử accept_all.mp3" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Click="BtnTestAcceptSound_Click" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Separator Background="#1f2937" Margin="0,0,0,12" />
+
+                                <!-- Mục 3: Submit.mp3 -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="⚡ ÂM BÁO DUYỆT SUBMIT (submit.mp3)" FontSize="11" FontWeight="Bold" Foreground="#a855f7" />
+                                            <Border Background="#6b21a8" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                <TextBlock Text="BÁO SUBMIT" FontSize="9" FontWeight="Bold" Foreground="#f3e8ff" />
+                                            </Border>
+                                        </StackPanel>
+                                        <CheckBox x:Name="ChkSubmitSoundNotification" Content="Tự động phát submit.mp3 khi duyệt Submit form câu hỏi" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <TextBlock Text="Phát âm thanh submit.mp3 mỗi khi Auto Pilot tự động trả lời câu hỏi và bấm Submit." FontSize="11" Foreground="#6b7280" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="BtnTestSubmitSound" Content="🔊 Nghe thử submit.mp3" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Click="BtnTestSubmitSound_Click" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Separator Background="#1f2937" Margin="0,0,0,12" />
+
+                                <!-- Mục 4: Plan.mp3 -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="📋 ÂM BÁO KẾ HOẠCH PLAN (plan.mp3)" FontSize="11" FontWeight="Bold" Foreground="#f59e0b" />
+                                            <Border Background="#b45309" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                <TextBlock Text="BÁO PLAN" FontSize="9" FontWeight="Bold" Foreground="#fef3c7" />
+                                            </Border>
+                                        </StackPanel>
+                                        <CheckBox x:Name="ChkPlanSoundNotification" Content="Tự động phát plan.mp3 khi phát hiện Implementation Plan" Style="{StaticResource ModernCheckBox}" IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                        <TextBlock Text="Phát âm thanh thông báo mỗi khi Antigravity đưa ra kế hoạch Implementation Plan chờ duyệt." FontSize="11" Foreground="#6b7280" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="BtnTestPlanSound" Content="🔊 Nghe thử plan.mp3" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Click="BtnTestPlanSound_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 2: NHẬT KÝ HOẠT ĐỘNG -->
+            <TabItem Header="Nhật Ký Hoạt Động">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Thanh công cụ lọc / hành động -->
+                    <Border Grid.Row="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Sự Kiện Tự Động Gần Đây (Tối đa 1000 mục)" FontSize="12" FontWeight="SemiBold" Foreground="#9ca3af" VerticalAlignment="Center" />
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <CheckBox x:Name="ChkAutoScroll" Content="Tự cuộn xuống" Style="{StaticResource ModernCheckBox}" IsChecked="True" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                <Button Content="Xóa Nhật Ký" Style="{StaticResource ModernButton}" Height="30" Padding="10,4" Margin="0,0,8,0" Click="BtnClearLog_Click" />
+                                <Button Content="Mở File Log" Style="{StaticResource ModernButton}" Height="30" Padding="10,4" Click="BtnOpenLogFile_Click" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Log Items List -->
+                    <Border Grid.Row="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="8" Padding="6">
+                        <ListBox x:Name="LogListBox" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,2" Padding="8,4" Background="#0f172a" CornerRadius="4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Timestamp -->
+                                            <TextBlock Text="{Binding TimeFormatted}" Foreground="#64748b" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                                            <!-- Level Badge -->
+                                            <Border Grid.Column="1" Background="{Binding BadgeColor}" CornerRadius="3" Padding="6,1" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding LevelName}" FontSize="9" FontWeight="Bold" Foreground="#090d16" />
+                                            </Border>
+
+                                            <!-- Message Text -->
+                                            <TextBlock Grid.Column="2" Text="{Binding Message}" Foreground="#f1f5f9" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- TAB 3: CÀI ĐẶT -->
+            <TabItem Header="Cài Đặt">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Trình chỉnh sửa Whitelist & Blacklist tùy chỉnh -->
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Thẻ Whitelist tùy chỉnh -->
+                            <Border Grid.Column="0" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="WHITELIST TÙY CHỈNH" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                    <TextBlock Text="Thêm tên nút bấm tùy chỉnh để tool tự động click." FontSize="11" Foreground="#6b7280" Margin="0,2,0,8" />
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TxtNewWhitelist" Background="#1f2937" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" KeyDown="TxtNewWhitelist_KeyDown" />
+                                        <Button Grid.Column="1" Content="Thêm" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Margin="6,0,0,0" Click="BtnAddWhitelist_Click" />
+                                    </Grid>
+
+                                    <ListBox x:Name="ListCustomWhitelist" Height="100" Background="#0b0f19" BorderBrush="#1f2937" Foreground="#f3f4f6" />
+                                    <Button Content="Xóa Mục Đã Chọn" Style="{StaticResource ModernButton}" Height="28" Padding="10,0" Margin="0,6,0,0" HorizontalAlignment="Right" Click="BtnRemoveWhitelist_Click" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Thẻ Blacklist tùy chỉnh -->
+                            <Border Grid.Column="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16">
+                                <StackPanel>
+                                    <TextBlock Text="BLACKLIST TÙY CHỈNH" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" />
+                                    <TextBlock Text="Thêm các từ khóa TUYỆT ĐỐI KHÔNG ĐƯỢC tự động click." FontSize="11" Foreground="#6b7280" Margin="0,2,0,8" />
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TxtNewBlacklist" Background="#1f2937" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" KeyDown="TxtNewBlacklist_KeyDown" />
+                                        <Button Grid.Column="1" Content="Thêm" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Margin="6,0,0,0" Click="BtnAddBlacklist_Click" />
+                                    </Grid>
+
+                                    <ListBox x:Name="ListCustomBlacklist" Height="100" Background="#0b0f19" BorderBrush="#1f2937" Foreground="#f3f4f6" />
+                                    <Button Content="Xóa Mục Đã Chọn" Style="{StaticResource ModernButton}" Height="28" Padding="10,0" Margin="0,6,0,0" HorizontalAlignment="Right" Click="BtnRemoveBlacklist_Click" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Thẻ Lệnh terminal nguy hiểm cần chặn -->
+                        <Border Grid.Row="1" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="DANH SÁCH LỆNH TERMINAL NGUY HIỂM CẦN CHẶN" FontSize="11" FontWeight="Bold" Foreground="#ef4444" />
+                                <TextBlock Text="Bất kỳ hành động Run nào chứa các lệnh nguy hiểm này trong ngữ cảnh terminal sẽ bị CHẶN NGAY LẬP TỨC." FontSize="11" Foreground="#6b7280" Margin="0,2,0,8" />
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtNewDangerCmd" Background="#1f2937" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" KeyDown="TxtNewDangerCmd_KeyDown" />
+                                    <Button Grid.Column="1" Content="Thêm Lệnh" Style="{StaticResource ModernButton}" Height="32" Padding="12,0" Margin="6,0,0,0" Click="BtnAddDangerCmd_Click" />
+                                </Grid>
+
+                                <ListBox x:Name="ListDangerousCmds" Height="120" Background="#0b0f19" BorderBrush="#1f2937" Foreground="#f87171" FontFamily="Consolas" />
+                                <Button Content="Xóa Lệnh Đã Chọn" Style="{StaticResource ModernButton}" Height="28" Padding="10,0" Margin="0,6,0,0" HorizontalAlignment="Right" Click="BtnRemoveDangerCmd_Click" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Thẻ Hành vi ứng dụng -->
+                        <Border Grid.Row="2" Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="HÀNH VI ỨNG DỤNG" FontSize="11" FontWeight="Bold" Foreground="#9ca3af" Margin="0,0,0,10" />
+
+                                <CheckBox x:Name="ChkPhysicalClickFallback" Content="Cho phép click chuột vật lý dự phòng (Mặc định: TẮT, luôn ưu tiên InvokePattern trong nền)" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
+
+                                <CheckBox x:Name="ChkMinimizeToTray" Content="Thu nhỏ xuống khay hệ thống khi đóng cửa sổ" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
+
+                                <CheckBox x:Name="ChkStartMinimized" Content="Khởi động thu nhỏ sẵn dưới khay hệ thống" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,14" Checked="SettingChanged" Unchecked="SettingChanged" />
+
+                                <Border Background="#1f2937" CornerRadius="8" Padding="12" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="CẤU HÌNH TẬP TIN &amp; BẬT/TẮT ÂM THANH" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,10" />
+
+                                        <!-- File âm thanh hoàn thành (done.mp3) -->
+                                        <StackPanel Margin="0,0,0,10">
+                                            <CheckBox x:Name="ChkSoundNotificationSettings" Content="Bật âm báo hoàn thành tác vụ (done.mp3)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,4" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtSoundFilePath" Text="done.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestSound_Click" />
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- File âm thanh duyệt accept all (accept_all.mp3) -->
+                                        <StackPanel Margin="0,0,0,10">
+                                            <CheckBox x:Name="ChkAcceptSoundNotificationSettings" Content="Bật âm báo duyệt Accept All (accept_all.mp3)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,4" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtAcceptSoundFilePath" Text="accept_all.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestAcceptSound_Click" />
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- File âm thanh duyệt submit (submit.mp3) -->
+                                        <StackPanel Margin="0,0,0,10">
+                                            <CheckBox x:Name="ChkSubmitSoundNotificationSettings" Content="Bật âm báo duyệt Submit (submit.mp3)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,4" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtSubmitSoundFilePath" Text="submit.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestSubmitSound_Click" />
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- File âm thanh kế hoạch plan (plan.mp3) -->
+                                        <StackPanel Margin="0,0,0,10">
+                                            <CheckBox x:Name="ChkPlanSoundNotificationSettings" Content="Bật âm báo có Implementation Plan (plan.mp3)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,4" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtPlanSoundFilePath" Text="plan.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestPlanSound_Click" />
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="Âm lượng thông báo" FontSize="11" Foreground="#9ca3af" />
+                                            <TextBlock x:Name="TxtVolumeVal" Text="100%" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" HorizontalAlignment="Right" />
+                                        </Grid>
+                                        <Slider x:Name="SliderVolume" Minimum="0" Maximum="100" Value="100" SmallChange="5" LargeChange="10" ValueChanged="SliderVolume_ValueChanged" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Content="💾 Lưu Cài Đặt Vào Ổ Đĩa" Style="{StaticResource ModernButton}" Height="36" Padding="18,0" HorizontalAlignment="Left" Click="BtnSaveSettings_Click" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- FOOTER / THANH TRẠNG THÁI -->
+        <Border Grid.Row="2" Background="#090d16" BorderBrush="#1f2937" BorderThickness="0,1,0,0" Padding="18,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Sự kiện gần nhất: " FontSize="11" FontWeight="SemiBold" Foreground="#9ca3af" />
+                    <TextBlock x:Name="TxtLatestEvent" Text="Sẵn sàng" FontSize="11" FontWeight="Bold" Foreground="#38bdf8" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="Antigravity Auto Pilot v1.0 • Tự Động Hóa .NET 8" FontSize="11" Foreground="#4b5563" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
