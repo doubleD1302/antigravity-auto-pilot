@@ -137,6 +137,14 @@ public class AudioService
         return PlaySound(customPath, "Sounds/plan.mp3", volumePercent);
     }
 
+    /// <summary>
+    /// Plays the dangerous command warning sound (Sounds/warning.mp3).
+    /// </summary>
+    public bool PlayWarning(string? customPath = null, int volumePercent = 100)
+    {
+        return PlaySound(customPath, "Sounds/warning.mp3", volumePercent);
+    }
+
     private void PlayInternal(string filePath, int volumePercent)
     {
         lock (_lock)

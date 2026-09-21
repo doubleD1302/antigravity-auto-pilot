@@ -29,7 +29,6 @@ public partial class MainWindow : Window
     private readonly AudioService _audioService;
 
     private AppSettings _settings;
-    private bool _isExplicitExit = false;
     private bool _isInitializing = true;
 
     public MainWindow()
@@ -134,10 +133,52 @@ public partial class MainWindow : Window
         {
             if (_settings.EnablePlanSoundNotification)
             {
-                _logService.LogSuccess("Phát hiện Implementation Plan! Phát âm thanh plan.mp3.");
+                _logService.LogInfo("Phát hiện Implementation Plan! Phát âm thanh plan.mp3.");
                 _audioService.PlayPlan(_settings.PlanSoundFilePath, _settings.SoundVolumePercent);
             }
         });
+
+        _scanner.ConfirmDangerousCommandAsync = async (request) =>
+        {
+            return await Dispatcher.InvokeAsync(() =>
+            {
+                if (_settings.EnableWarningSoundNotification)
+                {
+                    _logService.LogWarning("Phát hiện lệnh nguy hiểm! Phát âm thanh warning.mp3.");
+                    _audioService.PlayWarning(_settings.WarningSoundFilePath, _settings.SoundVolumePercent);
+                }
+                else
+                {
+                    System.Media.SystemSounds.Exclamation.Play();
+                }
+
+                _logService.LogDanger($"CẢNH BÁO LỆNH NGUY HIỂM: {request.DangerousKeyword} — Đang hiển thị hộp thoại xác nhận.");
+
+                var dialog = new DangerousCommandDialog(request);
+                if (this.IsVisible && this.WindowState != WindowState.Minimized)
+                {
+                    dialog.Owner = this;
+                }
+                dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                dialog.Topmost = true;
+
+                bool? result = dialog.ShowDialog();
+                bool approved = result == true && dialog.UserApproved;
+
+                if (approved)
+                {
+                    _logService.LogSuccess($"Người dùng ĐÃ DUYỆT lệnh: {request.DangerousKeyword}. Đang tiếp tục tool...");
+                }
+                else
+                {
+                    _logService.LogDanger($"Người dùng ĐÃ CHẶN lệnh: {request.DangerousKeyword}. Auto Pilot đã tạm dừng!");
+                    UpdateEngineStatusUI(EngineStatus.Paused);
+                    _trayService.UpdateStatus(EngineStatus.Paused, AntigravityConnectionState.Connected);
+                }
+
+                return approved;
+            }).Task;
+        };
 
         _scanner.PlanTabClosed += (tabName) => Dispatcher.Invoke(() =>
         {
@@ -269,7 +310,6 @@ public partial class MainWindow : Window
 
         // General
         ChkPhysicalClickFallback.IsChecked = _settings.AllowPhysicalClickFallback;
-        ChkMinimizeToTray.IsChecked = _settings.MinimizeToTrayOnClose;
         ChkStartMinimized.IsChecked = _settings.StartMinimized;
 
         // Sound Notifications
@@ -288,6 +328,9 @@ public partial class MainWindow : Window
         ChkPlanSoundNotification.IsChecked = _settings.EnablePlanSoundNotification;
         ChkPlanSoundNotificationSettings.IsChecked = _settings.EnablePlanSoundNotification;
         TxtPlanSoundFilePath.Text = _settings.PlanSoundFilePath;
+
+        ChkWarningSoundNotificationSettings.IsChecked = _settings.EnableWarningSoundNotification;
+        TxtWarningSoundFilePath.Text = _settings.WarningSoundFilePath;
 
         SliderVolume.Value = _settings.SoundVolumePercent;
         TxtVolumeVal.Text = $"{_settings.SoundVolumePercent}%";
@@ -332,7 +375,6 @@ public partial class MainWindow : Window
         _settings.DebounceMs = (int)SliderDebounce.Value;
 
         _settings.AllowPhysicalClickFallback = ChkPhysicalClickFallback.IsChecked == true;
-        _settings.MinimizeToTrayOnClose = ChkMinimizeToTray.IsChecked == true;
         _settings.StartMinimized = ChkStartMinimized.IsChecked == true;
 
         // Sync Dashboard and Settings checkboxes if one was clicked
@@ -374,6 +416,9 @@ public partial class MainWindow : Window
 
         _settings.EnablePlanSoundNotification = ChkPlanSoundNotification?.IsChecked == true;
         _settings.PlanSoundFilePath = TxtPlanSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtPlanSoundFilePath.Text) ? TxtPlanSoundFilePath.Text.Trim() : "Sounds/plan.mp3";
+
+        _settings.EnableWarningSoundNotification = ChkWarningSoundNotificationSettings?.IsChecked == true;
+        _settings.WarningSoundFilePath = TxtWarningSoundFilePath != null && !string.IsNullOrWhiteSpace(TxtWarningSoundFilePath.Text) ? TxtWarningSoundFilePath.Text.Trim() : "Sounds/warning.mp3";
 
         _settings.SoundVolumePercent = SliderVolume != null ? (int)SliderVolume.Value : 100;
 
@@ -484,6 +529,17 @@ public partial class MainWindow : Window
         if (!played)
         {
             _logService.LogWarning($"Không thể phát file âm thanh: {_settings.PlanSoundFilePath}");
+        }
+    }
+
+    private void BtnTestWarningSound_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateSettingsFromUI();
+        _logService.LogInfo("Đang phát thử nghiệm âm thanh warning.mp3...");
+        bool played = _audioService.PlayWarning(_settings.WarningSoundFilePath, _settings.SoundVolumePercent);
+        if (!played)
+        {
+            _logService.LogWarning($"Không thể phát file âm thanh: {_settings.WarningSoundFilePath}");
         }
     }
 
@@ -633,26 +689,14 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
-        if (!_isExplicitExit && _settings.MinimizeToTrayOnClose)
-        {
-            e.Cancel = true;
-            Hide();
-            _trayService.ShowNotification(
-                "Antigravity Auto Pilot",
-                "Ứng dụng đang chạy ngầm trong khay hệ thống. Bấm đúp vào biểu tượng để mở lại.",
-                System.Windows.Forms.ToolTipIcon.Info);
-        }
-        else
-        {
-            Cleanup();
-        }
+        Cleanup();
+        Application.Current.Shutdown();
     }
 
     public void ShutdownApplication()
     {
-        _isExplicitExit = true;
         Cleanup();
-        System.Windows.Application.Current.Shutdown();
+        Application.Current.Shutdown();
     }
 
     private void Cleanup()

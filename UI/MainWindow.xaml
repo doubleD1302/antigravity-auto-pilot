@@ -591,7 +591,9 @@
 
                                 <CheckBox x:Name="ChkPhysicalClickFallback" Content="Cho phép click chuột vật lý dự phòng (Mặc định: TẮT, luôn ưu tiên InvokePattern trong nền)" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
 
-                                <CheckBox x:Name="ChkMinimizeToTray" Content="Thu nhỏ xuống khay hệ thống khi đóng cửa sổ" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                <Border Background="#1a202c" BorderBrush="#2d3748" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,0,8">
+                                    <TextBlock Text="ℹ️ Đóng cửa sổ (nút X): Dừng tool hoàn toàn và thoát ứng dụng (không chạy ngầm)" FontSize="12" Foreground="#94a3b8" />
+                                </Border>
 
                                 <CheckBox x:Name="ChkStartMinimized" Content="Khởi động thu nhỏ sẵn dưới khay hệ thống" Style="{StaticResource ModernCheckBox}" Margin="0,0,0,8" Checked="SettingChanged" Unchecked="SettingChanged" />
 
@@ -650,6 +652,19 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBox x:Name="TxtPlanSoundFilePath" Text="Sounds/plan.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
                                                 <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestPlanSound_Click" />
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- File âm thanh cảnh báo lệnh nguy hiểm (warning.mp3) -->
+                                        <StackPanel Margin="0,0,0,10">
+                                            <CheckBox x:Name="ChkWarningSoundNotificationSettings" Content="Bật âm báo phát hiện lệnh nguy hiểm (warning.mp3)" Style="{StaticResource ModernCheckBox}" IsChecked="True" Margin="0,0,0,4" Checked="SettingChanged" Unchecked="SettingChanged" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtWarningSoundFilePath" Text="Sounds/warning.mp3" Background="#111827" Foreground="#f9fafb" BorderBrush="#374151" Padding="8,5" TextChanged="SettingChanged" />
+                                                <Button Grid.Column="1" Content="🔊 Nghe thử" Style="{StaticResource ModernButton}" Height="30" Padding="12,0" Margin="6,0,0,0" Click="BtnTestWarningSound_Click" />
                                             </Grid>
                                         </StackPanel>
 

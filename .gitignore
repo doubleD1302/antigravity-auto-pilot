@@ -15,3 +15,4 @@ logs/
 *.log
 crash.log
 settings.json
+*.lnk

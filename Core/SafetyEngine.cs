@@ -17,6 +17,8 @@ public class SafetyEngine
         public string? BlockReason { get; set; }
         public bool IsTerminalApproval { get; set; }
         public string? DangerousCommand { get; set; }
+        public string? FullCommand { get; set; }
+        public string? SurroundingContext { get; set; }
     }
 
     /// <summary>
@@ -170,21 +172,23 @@ public class SafetyEngine
         // 4. DESTRUCTIVE TERMINAL COMMAND CHECK & LEGITIMATE AGENT ACTION VALIDATION
         // (Applies in Normal & Full Auto modes for Run/Terminal buttons)
         // ==========================================
-        if (isTerminal || result.Kind == ActionKind.Run)
+        if (isTerminal || result.Kind == ActionKind.Run || result.Kind == ActionKind.Allow)
         {
-            var (isDangerous, dangerousCmd, context) = CommandAnalyzer.AnalyzeContext(element, settings);
-            if (isDangerous)
+            var analysis = CommandAnalyzer.AnalyzeContext(element, settings);
+            if (analysis.IsDangerous)
             {
                 result.IsAllowed = false;
                 result.IsBlocked = true;
-                result.DangerousCommand = dangerousCmd;
-                result.BlockReason = $"ĐÃ CHẶN — phát hiện lệnh có nguy cơ phá hủy: {dangerousCmd}";
+                result.DangerousCommand = analysis.DangerousKeyword;
+                result.FullCommand = analysis.FullCommand;
+                result.SurroundingContext = analysis.FullContext;
+                result.BlockReason = $"ĐÃ CHẶN — phát hiện lệnh có nguy cơ phá hủy: {analysis.DangerousKeyword}";
                 result.Kind = ActionKind.Blocked;
                 return result;
             }
 
             // Verify this is a genuine agent terminal approval rather than an IDE editor action or menu
-            if (!IsLegitimateTerminalApproval(element, cleanText, context ?? string.Empty))
+            if (!IsLegitimateTerminalApproval(element, cleanText, analysis.FullContext ?? string.Empty))
             {
                 result.IsAllowed = false;
                 return result;
@@ -223,13 +227,15 @@ public class SafetyEngine
         }
 
         // 2. Destructive terminal command check
-        var (isDangerous, dangerousCmd, snippet) = CommandAnalyzer.AnalyzeContext(submitOrCardElement, settings);
-        if (isDangerous)
+        var analysis = CommandAnalyzer.AnalyzeContext(submitOrCardElement, settings);
+        if (analysis.IsDangerous)
         {
             result.IsAllowed = false;
             result.IsBlocked = true;
-            result.DangerousCommand = dangerousCmd;
-            result.BlockReason = $"ĐÃ CHẶN — phát hiện lệnh nguy hiểm trong câu hỏi: {dangerousCmd}";
+            result.DangerousCommand = analysis.DangerousKeyword;
+            result.FullCommand = analysis.FullCommand;
+            result.SurroundingContext = analysis.FullContext ?? contextText;
+            result.BlockReason = $"ĐÃ CHẶN — phát hiện lệnh nguy hiểm trong câu hỏi: {analysis.DangerousKeyword}";
             result.Kind = ActionKind.Blocked;
             return result;
         }

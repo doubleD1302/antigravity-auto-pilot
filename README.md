@@ -15,7 +15,7 @@
 - **Blacklist tuyệt đối**: Không bao giờ tự click các nút có tính chất hủy hoại (`Reject`, `Decline`, `Delete`, `Cancel`, `Discard`, `Reset`, `Terminate`, `Drop`, `Revert`, `Undo All`).
 - **Tự động trả lời câu hỏi tương tác (`ask_question`)**: Tự động chọn Option 1 (`Yes` / `Allow` / `Recommended`) và gửi `Submit` ngay lập tức, kèm chống spam phím Enter.
 - **Hệ thống thông báo âm thanh tập trung trong thư mục `Sounds/` (Bật/Tắt linh hoạt)**:
-  - 🔔 `Sounds/done.mp3`: Thông báo khi Antigravity hoàn thành trọn vẹn chuỗi nhiệm vụ (có thuật toán chống báo sớm giữa các tool call).
+  - 🔔 `Sounds/done.mp3`: Thông báo khi Antigravity hoàn thành trọn vẹn chuỗi nhiệm vụ. Tự động nhận diện và loại trừ các phản hồi trung gian của agent khi đang thực hiện tác vụ dài (chứa từ khóa "Đang tải...", "Đang cài đặt...", "Downloading...", "In progress..."), ngăn chặn tuyệt đối tình trạng báo xong sớm khi công việc vẫn đang chạy dở dang.
   - ✨ `Sounds/accept_all.mp3`: Thông báo khi vừa tự động duyệt `Accept All` hoặc `Accept` diff.
   - ⚡ `Sounds/submit.mp3`: Thông báo khi vừa tự động duyệt gửi form câu hỏi tương tác.
   - 📋 `Sounds/plan.mp3`: Thông báo khi Antigravity đưa ra bản kế hoạch `Implementation Plan` cần xem xét.

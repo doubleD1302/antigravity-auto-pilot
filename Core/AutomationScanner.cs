@@ -36,6 +36,8 @@ public class AutomationScanner : IDisposable
     public event Action<string>? PlanTabClosed;
     public event Action<string>? DiagnosticLogged;
 
+    public Func<DangerousCommandPromptRequest, Task<bool>>? ConfirmDangerousCommandAsync { get; set; }
+
     private bool _hasActiveGenerationObserved = false;
     private bool _stopButtonPreviouslyPresent = false;
     private DateTime? _stopDisappearedTime = null;
@@ -52,6 +54,8 @@ public class AutomationScanner : IDisposable
     private string? _lastCompletedResponseId = null;
     private bool _staleResponseSnapshotTaken = false;
     private double _highestSeenResponseY = double.MinValue;
+    private bool _isLatestResponseInProgress = false;
+    private string? _lastInProgressResponseSnippet = null;
 
     public AutomationScanner(AppSettings settings)
     {
@@ -100,6 +104,8 @@ public class AutomationScanner : IDisposable
             _lastCompletedResponseId = null;
             _staleResponseSnapshotTaken = false;
             _highestSeenResponseY = double.MinValue;
+            _isLatestResponseInProgress = false;
+            _lastInProgressResponseSnippet = null;
 
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
@@ -158,6 +164,8 @@ public class AutomationScanner : IDisposable
             _lastActionExecutedTime = DateTime.MinValue;
             _hasPendingPlan = false;
             _planDetectedTime = DateTime.MinValue;
+            _isLatestResponseInProgress = false;
+            _lastInProgressResponseSnippet = null;
         }
     }
 
@@ -429,10 +437,87 @@ public class AutomationScanner : IDisposable
                                 // If blocked due to destructive command or mode restriction on terminal
                                 if (eval.DangerousCommand != null || eval.IsTerminalApproval)
                                 {
+                                    if (eval.DangerousCommand != null && ConfirmDangerousCommandAsync != null)
+                                    {
+                                        var promptAction = new AutomationAction
+                                        {
+                                            Element = element,
+                                            ButtonText = eval.CleanText,
+                                            Kind = eval.Kind == ActionKind.Blocked ? ActionKind.Run : eval.Kind,
+                                            ElementIdentifier = candidateId,
+                                            BoundingRectangle = rect,
+                                            IsTerminalApproval = eval.IsTerminalApproval,
+                                            DetectedCommand = eval.DangerousCommand,
+                                            SurroundingContext = eval.SurroundingContext
+                                        };
+
+                                        var request = new DangerousCommandPromptRequest
+                                        {
+                                            Action = promptAction,
+                                            DangerousKeyword = eval.DangerousCommand,
+                                            FullCommand = eval.FullCommand ?? eval.DangerousCommand,
+                                            SurroundingContext = eval.SurroundingContext,
+                                            BlockReason = eval.BlockReason,
+                                            IsQuestionForm = false
+                                        };
+
+                                        bool approved = await ConfirmDangerousCommandAsync(request);
+                                        if (approved)
+                                        {
+                                            // USER APPROVED: proceed with executing action!
+                                            var approvedClickResult = await _actionEngine.ExecuteAsync(promptAction, currentSettings, ct);
+                                            DiagnosticLogged?.Invoke($"[DANGEROUS_APPROVED] Click '{promptAction.ButtonText}': success={approvedClickResult.Success}, method={approvedClickResult.MethodUsed}");
+
+                                            _actionEngine.MarkConsumed(candidateId);
+                                            _staleActionIds.Add(candidateId);
+
+                                            TotalActionsClicked++;
+                                            LatestAction = $"Đã duyệt & click: {promptAction.ButtonText}";
+                                            _lastActionExecutedTime = DateTime.UtcNow;
+                                            _hasActiveGenerationObserved = true;
+                                            _stopDisappearedTime = null;
+                                            _isLatestResponseInProgress = false;
+                                            ActionExecuted?.Invoke(promptAction, approvedClickResult.MethodUsed);
+
+                                            if (promptAction.Kind == ActionKind.Submit || promptAction.ButtonText.Equals("Submit", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                SubmitApproved?.Invoke(promptAction);
+                                            }
+                                            else if (promptAction.Kind == ActionKind.Accept || promptAction.Kind == ActionKind.AcceptAll ||
+                                                     promptAction.ButtonText.IndexOf("accept", StringComparison.OrdinalIgnoreCase) >= 0)
+                                            {
+                                                AcceptApproved?.Invoke(promptAction);
+                                            }
+
+                                            clickedInThisPass = true;
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            // USER BLOCKED: "nếu chặn thì tạm dừng tool"
+                                            TotalBlocked++;
+                                            LatestAction = $"ĐÃ CHẶN: {eval.DangerousCommand}";
+                                            var blockedAction = new AutomationAction
+                                            {
+                                                Element = element,
+                                                ButtonText = eval.CleanText,
+                                                Kind = ActionKind.Blocked,
+                                                IsBlocked = true,
+                                                BlockReason = eval.BlockReason,
+                                                DetectedCommand = eval.DangerousCommand,
+                                                SurroundingContext = eval.SurroundingContext,
+                                                BoundingRectangle = rect
+                                            };
+                                            ActionBlocked?.Invoke(blockedAction, eval.BlockReason ?? "Người dùng đã chặn lệnh nguy hiểm");
+                                            Pause();
+                                            break;
+                                        }
+                                    }
+
                                     TotalBlocked++;
                                     LatestAction = $"ĐÃ CHẶN: {eval.DangerousCommand ?? eval.BlockReason}";
 
-                                    var blockedAction = new AutomationAction
+                                    var defaultBlockedAction = new AutomationAction
                                     {
                                         Element = element,
                                         ButtonText = eval.CleanText,
@@ -440,10 +525,11 @@ public class AutomationScanner : IDisposable
                                         IsBlocked = true,
                                         BlockReason = eval.BlockReason,
                                         DetectedCommand = eval.DangerousCommand,
+                                        SurroundingContext = eval.SurroundingContext,
                                         BoundingRectangle = rect
                                     };
 
-                                    ActionBlocked?.Invoke(blockedAction, eval.BlockReason ?? "Phát hiện lệnh nguy hiểm / phá hủy");
+                                    ActionBlocked?.Invoke(defaultBlockedAction, eval.BlockReason ?? "Phát hiện lệnh nguy hiểm / phá hủy");
                                 }
                                 continue;
                             }
@@ -499,6 +585,7 @@ public class AutomationScanner : IDisposable
                                 _lastActionExecutedTime = DateTime.UtcNow;
                                 _hasActiveGenerationObserved = true;
                                 _stopDisappearedTime = null;
+                                _isLatestResponseInProgress = false;
                                 ActionExecuted?.Invoke(action, clickResult.MethodUsed);
 
                                 if (action.Kind == ActionKind.Submit || action.ButtonText.Equals("Submit", StringComparison.OrdinalIgnoreCase))
@@ -590,6 +677,7 @@ public class AutomationScanner : IDisposable
                 {
                     _hasActiveGenerationObserved = true;
                     _stopDisappearedTime = null;
+                    _isLatestResponseInProgress = false;
                 }
                 else if (_stopButtonPreviouslyPresent && !stopButtonFoundInCurrentScan)
                 {
@@ -619,20 +707,60 @@ public class AutomationScanner : IDisposable
 
                     if (isNewResponse || isDifferentFromLastAlert)
                     {
-                        _seenResponseIds.Add(latestToolbar.Identifier);
-                        _lastCompletedResponseId = latestToolbar.Identifier;
-                        if (latestToolbar.BoundingBox.Bottom > _highestSeenResponseY)
+                        bool isCurrentResponseInProgress = false;
+                        string? inProgressReason = null;
+                        string? lastSentence = null;
+
+                        if (currentSettings.FilterInProgressResponsesOnCompletion)
                         {
-                            _highestSeenResponseY = latestToolbar.BoundingBox.Bottom;
+                            try
+                            {
+                                string responseText = ResponseProgressAnalyzer.ExtractResponseText(latestToolbar);
+                                isCurrentResponseInProgress = ResponseProgressAnalyzer.IsInProgressResponse(
+                                    responseText,
+                                    currentSettings,
+                                    out inProgressReason,
+                                    out lastSentence);
+                            }
+                            catch (Exception ex)
+                            {
+                                DiagnosticLogged?.Invoke($"[RESPONSE_DETECTOR] Lỗi khi phân tích nội dung chat: {ex.Message}");
+                            }
                         }
 
-                        DiagnosticLogged?.Invoke($"[TASK_COMPLETE] Phát hiện đoạn chat hoàn thành với cụm icon phản hồi ({latestToolbar.GetDescription()}) tại Y={latestToolbar.BoundingBox.Bottom:0}. Báo hoàn tất tác vụ!");
-                        TriggerCompletion();
+                        if (isCurrentResponseInProgress)
+                        {
+                            _isLatestResponseInProgress = true;
+                            _lastInProgressResponseSnippet = lastSentence;
+                            _seenResponseIds.Add(latestToolbar.Identifier);
+                            _lastCompletedResponseId = latestToolbar.Identifier;
+                            if (latestToolbar.BoundingBox.Bottom > _highestSeenResponseY)
+                            {
+                                _highestSeenResponseY = latestToolbar.BoundingBox.Bottom;
+                            }
+
+                            DiagnosticLogged?.Invoke($"[TASK_IN_PROGRESS] Đoạn phản hồi tại Y={latestToolbar.BoundingBox.Bottom:0} đang thực hiện tác vụ dở dang: \"{lastSentence}\" ({inProgressReason}). Tác vụ chưa hoàn thành, tiếp tục theo dõi.");
+                        }
+                        else
+                        {
+                            _isLatestResponseInProgress = false;
+                            _seenResponseIds.Add(latestToolbar.Identifier);
+                            _lastCompletedResponseId = latestToolbar.Identifier;
+                            if (latestToolbar.BoundingBox.Bottom > _highestSeenResponseY)
+                            {
+                                _highestSeenResponseY = latestToolbar.BoundingBox.Bottom;
+                            }
+
+                            DiagnosticLogged?.Invoke($"[TASK_COMPLETE] Phát hiện đoạn chat hoàn thành với cụm icon phản hồi ({latestToolbar.GetDescription()}) tại Y={latestToolbar.BoundingBox.Bottom:0}. Báo hoàn tất tác vụ!");
+                            TriggerCompletion();
+                        }
                     }
                 }
                 // FALLBACK COMPLETION DETECTION:
-                // If active generation was observed, Stop button disappeared > 5s ago, and no pending actions remain
+                // If active generation was observed, Stop button disappeared > 5s ago, no pending actions remain,
+                // and the latest response is NOT an in-progress / ongoing action.
                 else if (_hasActiveGenerationObserved &&
+                    !_isLatestResponseInProgress &&
                     !stopButtonFoundInCurrentScan &&
                     !hasPendingInteractiveActions &&
                     !clickedInThisPass &&
@@ -663,6 +791,7 @@ public class AutomationScanner : IDisposable
     {
         _hasActiveGenerationObserved = false;
         _stopDisappearedTime = null;
+        _isLatestResponseInProgress = false;
         DateTime now = DateTime.UtcNow;
         if ((now - _lastCompletionAlertTime).TotalSeconds >= 5)
         {
@@ -923,25 +1052,57 @@ public class AutomationScanner : IDisposable
 
             if (eval.IsBlocked)
             {
-                TotalBlocked++;
-                LatestAction = $"ĐÃ CHẶN: {eval.DangerousCommand ?? eval.BlockReason}";
-
                 Rect rect = Rect.Empty;
                 try { rect = submitElem.Current.BoundingRectangle; } catch { }
 
                 var blockedAction = new AutomationAction
                 {
                     Element = submitElem,
-                    ButtonText = "Gửi Submit Biểu Mẫu",
-                    Kind = ActionKind.Blocked,
+                    ButtonText = "Submit",
+                    Kind = ActionKind.Submit,
                     IsBlocked = true,
                     BlockReason = eval.BlockReason,
                     DetectedCommand = eval.DangerousCommand,
+                    SurroundingContext = context,
                     BoundingRectangle = rect
                 };
 
-                ActionBlocked?.Invoke(blockedAction, eval.BlockReason ?? "Phát hiện lệnh nguy hiểm trong biểu mẫu câu hỏi");
-                return false;
+                if (eval.DangerousCommand != null && ConfirmDangerousCommandAsync != null)
+                {
+                    var request = new DangerousCommandPromptRequest
+                    {
+                        Action = blockedAction,
+                        DangerousKeyword = eval.DangerousCommand,
+                        FullCommand = eval.FullCommand ?? eval.DangerousCommand,
+                        SurroundingContext = context,
+                        BlockReason = eval.BlockReason,
+                        IsQuestionForm = true
+                    };
+
+                    bool approved = await ConfirmDangerousCommandAsync(request);
+                    if (approved)
+                    {
+                        // USER APPROVED: proceed with selecting option & submitting!
+                        eval.IsBlocked = false;
+                        eval.IsAllowed = true;
+                    }
+                    else
+                    {
+                        // USER BLOCKED: pause tool!
+                        TotalBlocked++;
+                        LatestAction = $"ĐÃ CHẶN: {eval.DangerousCommand}";
+                        ActionBlocked?.Invoke(blockedAction, eval.BlockReason ?? "Người dùng đã chặn submit biểu mẫu nguy hiểm");
+                        Pause();
+                        return false;
+                    }
+                }
+                else
+                {
+                    TotalBlocked++;
+                    LatestAction = $"ĐÃ CHẶN: {eval.DangerousCommand ?? eval.BlockReason}";
+                    ActionBlocked?.Invoke(blockedAction, eval.BlockReason ?? "Phát hiện lệnh nguy hiểm trong biểu mẫu câu hỏi");
+                    return false;
+                }
             }
 
             if (!eval.IsAllowed)
@@ -1001,14 +1162,37 @@ public class AutomationScanner : IDisposable
             _actionEngine.SendEnterKey(windowHwnd);
             DiagnosticLogged?.Invoke($"[QUESTION_FORM] Sent Enter key to window {windowHwnd}");
 
+            // Always mark consumed and stale for both submitElem and optionElem to prevent re-triggering
+            _actionEngine.MarkConsumed(elemId);
+            _staleActionIds.Add(elemId);
+            if (optionElem != null)
+            {
+                try
+                {
+                    string optName = optionElem.Current.Name ?? "Option";
+                    string optId = AutomationAction.GenerateElementId(optionElem, optName);
+                    _actionEngine.MarkConsumed(optId);
+                    _staleActionIds.Add(optId);
+                }
+                catch { }
+            }
+
             if (clickResult.Success)
             {
                 TotalActionsClicked++;
                 LatestAction = "Đã chọn phương án 1 & Gửi Submit câu hỏi";
                 _lastActionExecutedTime = DateTime.UtcNow;
-                _actionEngine.MarkConsumed(elemId);
-                _staleActionIds.Add(elemId);
                 ActionExecuted?.Invoke(action, clickResult.MethodUsed);
+                SubmitApproved?.Invoke(action);
+                return true;
+            }
+            else
+            {
+                // Fallback: Enter key was dispatched to submit dialog
+                TotalActionsClicked++;
+                LatestAction = "Đã chọn phương án 1 & Gửi Submit câu hỏi (Enter)";
+                _lastActionExecutedTime = DateTime.UtcNow;
+                ActionExecuted?.Invoke(action, "SendEnterKey");
                 SubmitApproved?.Invoke(action);
                 return true;
             }
@@ -1021,8 +1205,6 @@ public class AutomationScanner : IDisposable
         {
             return false;
         }
-
-        return false;
     }
 
     private void ConsumeAllProceedButtons(List<AutomationElement> candidates)

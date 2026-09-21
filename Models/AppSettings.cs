@@ -30,13 +30,14 @@ public class AppSettings
     // Safety & Click Policy
     public bool PreventFocusStealing { get; set; } = true;
     public bool AllowPhysicalClickFallback { get; set; } = false;
-    public bool MinimizeToTrayOnClose { get; set; } = true;
+    public bool MinimizeToTrayOnClose { get; set; } = false;
     public bool StartMinimized { get; set; } = false;
 
     // Sound Notification on Task Completion (done.mp3)
     public bool EnableSoundNotification { get; set; } = true;
     public string SoundFilePath { get; set; } = "Sounds/done.mp3";
     public int SoundVolumePercent { get; set; } = 100;
+    public bool FilterInProgressResponsesOnCompletion { get; set; } = true;
 
     // Sound Notification on Submit Approval (submit.mp3)
     public bool EnableSubmitSoundNotification { get; set; } = true;
@@ -50,12 +51,17 @@ public class AppSettings
     public bool EnablePlanSoundNotification { get; set; } = true;
     public string PlanSoundFilePath { get; set; } = "Sounds/plan.mp3";
 
+    // Sound Notification on Dangerous Command Warning (warning.mp3)
+    public bool EnableWarningSoundNotification { get; set; } = true;
+    public string WarningSoundFilePath { get; set; } = "Sounds/warning.mp3";
+
     // Auto-close editor tab of proceeded implementation plans (without deleting file)
     public bool AutoCloseProceededPlans { get; set; } = true;
 
     // Custom Lists
     public List<string> CustomWhitelist { get; set; } = new();
     public List<string> CustomBlacklist { get; set; } = new();
+    public List<string> CustomInProgressKeywords { get; set; } = new();
 
     // Dangerous terminal commands to block
     public List<string> DangerousCommands { get; set; } = new()
